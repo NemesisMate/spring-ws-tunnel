@@ -1,0 +1,252 @@
+<!doctype html>
+<html>
+<body>
+    <style>
+      #urls {
+        width: 80%;
+      }
+
+      #urls input {
+        width: 100%;
+      }
+
+      .console {
+         width: 80%;
+         height: 200px;
+      }
+    </style>
+
+    <div id="urls">
+        Source API http/s URL
+        <input id="sourceApiHttpUrl" type="text" value="N/A"/>
+        <br/>
+        Source API ws/s URL
+        <input id="sourceApiWsUrl" type="text" value="N/A"/>
+        <p/>
+        Target http/s URL
+        <input id="targetHttpUrl" type="text" value="N/A"/>
+        <br/>
+        Target ws/s URL
+        <input id="targetWsUrl" type="text" value="N/A"/>
+        <p/>
+        Event URL
+        <input id="targetEventMonitorUrl" type="text" value="N/A"/>
+        <p/>
+    </div>
+    Tunnel <span id="status">DOWN</span> <input id="toggle" type="checkbox" onchange="toggleConnection(this)" />
+    <br/> Source console: <br/>
+    <textarea id="sourceEventConsole" disabled class="console"></textarea>
+    <br/> Tunnel console: <br/>
+    <textarea id="tunnelEventConsole" disabled class="console"></textarea>
+    <br/> Target console: <br/>
+    <textarea id="targetEventConsole" disabled class="console"></textarea>
+    <br/>
+    <button onclick="sendHttpMessage()">Send api/HTTP message</button>
+    <button id="sendConnectWs" onclick="sendWsMessage()">N/A</button>
+
+    <script>
+        const tunnelId = 'my-tunnel';
+        const wsProtocol = window.location.protocol == 'https' ? 'wss' : 'ws';
+        const sourceApiWsUrlElement = document.getElementById('sourceApiWsUrl');
+        const sourceApiHttpUrlElement = document.getElementById('sourceApiHttpUrl');
+        const targetWsUrlElement = document.getElementById('targetWsUrl');
+        const targetHttpUrlElement = document.getElementById('targetHttpUrl');
+        const targetEventConsole = document.getElementById('targetEventConsole');
+        const sourceEventConsole = document.getElementById('sourceEventConsole');
+        const tunnelEventConsole = document.getElementById('tunnelEventConsole');
+        const statusElement = document.getElementById('status');
+        const toggleElement = document.getElementById('toggle');
+        const targetEventMonitorUrlElement = document.getElementById('targetEventMonitorUrl');
+
+        sourceApiHttpUrlElement.value = `${window.location.href}ws-tunnel-http/${tunnelId}`
+        sourceApiWsUrlElement.value = `${wsProtocol}://${window.location.host}/ws-tunnel-ws/${tunnelId}`
+        targetHttpUrlElement.value = `${window.location.href}demo`
+        targetWsUrlElement.value = `${wsProtocol}://${window.location.host}/demo-ws`
+        targetEventMonitorUrlElement.value = `${targetHttpUrlElement.value}-stream`;
+    </script>
+    <script>
+        function base64toBlob(b64Data, contentType='', sliceSize=512) {
+            const byteCharacters = atob(b64Data);
+            const byteArrays = [];
+
+            for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+                const slice = byteCharacters.slice(offset, offset + sliceSize);
+
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+
+            const blob = new Blob(byteArrays, {type: contentType});
+            return blob;
+        }
+
+        function convertBlobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader;
+                reader.onerror = reject;
+                reader.onload = () => {
+                    resolve(reader.result);
+                };
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function toggleConnection(checkbox) {
+            let tunnel;
+            let targetSocket;
+
+            if(checkbox.checked) {
+
+               tunnel = new WebSocket(`${wsProtocol}://${window.location.host}/ws-tunnel-connector/${tunnelId}`);
+               targetSocket = new WebSocket(targetWsUrlElement.value);
+
+               tunnel.addEventListener('open', function (event) {
+                    statusElement.innerHTML = 'UP';
+                    toggleElement.checked = true;
+                });
+
+                tunnel.addEventListener('close', function (event) {
+                    statusElement.innerHTML = 'DOWN';
+                    toggleElement.checked = false;
+                });
+
+                targetSocket.addEventListener('message', function (event) {
+                    let jsonResponse = {
+                        // tunnelId: tunnelId,
+                        type: 'WS_RESPONSE',
+                        message: {
+                          body: event.data,
+                        },
+                    };
+
+                    tunnelEventConsole.value += `<-- Tunneling (WS): ${event.data}\n`;
+                    tunnel.send(JSON.stringify(jsonResponse));
+                });
+
+                tunnel.addEventListener('message', function (event) {
+                    let data = JSON.parse(event.data);
+
+                    if(data.type != 'WS_REQUEST') {
+                        return;
+                    }
+
+                    let tunnelId = data.tunnelId;
+                    let message = data.message;
+
+                    tunnelEventConsole.value += `--> Tunneling (WS): ${message.body}\n`
+
+                    targetSocket.send(message.body);
+                });
+
+                tunnel.addEventListener('message', function (event) {
+                    let data = JSON.parse(event.data);
+
+                    if(data.type != 'HTTP_REQUEST') {
+                        return;
+                    }
+
+                    let requestId = data.id;
+                    let message = data.message;
+
+                    let jsonResponse = {
+                        id: requestId,
+                        type: 'HTTP_RESPONSE',
+                        // tunnelId: tunnelId,
+                    };
+
+                    let body = message.body ? {body: base64toBlob(message.body, message.headers['Content-Type'])} : {};
+                    // let body = message.body ? {body: atob(message.body)} : {};
+
+                    tunnelEventConsole.value += `--> Tunneling (HTTP)\n`
+
+                    fetch(targetHttpUrlElement.value + message.path, {
+                        method: message.method,
+                        headers: message.headers,
+                        ...body
+                    }).then(response => {
+                        headers = {}
+                        for (let [key, value] of response.headers) {
+                          headers[key] = value;
+                        }
+
+                        response.blob()
+                          .then(convertBlobToBase64)
+                          .then(base64 => {
+                              jsonResponse.message = {
+                                                          status: response.status,
+                                                          headers: headers,
+                                                          ...(base64 ? {body: base64.split('base64,')[1]} : {})
+                                                      };
+                              tunnelEventConsole.value += `<-- Tunneling (HTTP)\n`
+                              tunnel.send(JSON.stringify(jsonResponse));
+                        })
+                    }).catch(error => {
+                        jsonResponse.message = error.toString();
+                        tunnelEventConsole.value += `<-- Tunneling (HTTP Error): ${jsonResponse.message}\n`
+                        tunnel.send(JSON.stringify(jsonResponse))
+                    });
+                });
+            } else {
+               tunnel.close();
+               targetSocket.close();
+            }
+        }
+    </script>
+    <script>
+        const eventMonitor = new EventSource(targetEventMonitorUrlElement.value);
+
+        eventMonitor.addEventListener('message', message => {
+            targetEventConsole.value += `${message.data}\n`
+        })
+
+    </script>
+    <script>
+        const sendConnectWsElement = document.getElementById('sendConnectWs');
+        let sentCounter = 0;
+        let sourceApiWsSocket;
+
+        let buttonToCloseText = () => sendConnectWsElement.innerText = 'Connecto to api/WS';
+        buttonToCloseText();
+
+        function sendHttpMessage() {
+            let body = JSON.stringify({ httpField: sentCounter++ });
+            sourceEventConsole.value += `Sending api/HTTP: ${body}\n`;
+            fetch(`${sourceApiHttpUrlElement.value}/customPath`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: body
+            }).then(response => response.text())
+            .then(text => sourceEventConsole.value += `Received api/HTTP: ${text}\n`);
+        }
+
+        function sendWsMessage() {
+            if(sourceApiWsSocket) {
+                let body = JSON.stringify({ wsField: sentCounter++ });
+                sourceEventConsole.value += `Sending api/WS: ${body}\n`;
+                sourceApiWsSocket.send(body);
+            } else {
+                sourceApiWsSocket = new WebSocket(sourceApiWsUrlElement.value);
+
+                sourceApiWsSocket.addEventListener('open', function (event) {
+                    sendConnectWsElement.innerText = 'Send api/WS message';
+                });
+
+                sourceApiWsSocket.addEventListener('close', function (event) {
+                    buttonToCloseText();
+                    sourceApiWsSocket = undefined;
+                });
+
+                sourceApiWsSocket.addEventListener('message', function (event) {
+                    sourceEventConsole.value += `Received api/WS: ${event.data}\n`
+                })
+            }
+        }
+    </script>
+
+</body>
+</html>

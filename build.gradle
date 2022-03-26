@@ -1,0 +1,99 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version "${springboot_version}" apply false
+	id 'io.freefair.lombok' version "${lombok_plugin_version}" apply false
+}
+
+group = 'io.github.nemesismate'
+version = '1.0.0'
+sourceCompatibility = JavaVersion.VERSION_11
+
+java {
+//	withJavadocJar()
+	withSourcesJar()
+}
+
+ext {
+	details = [
+			'spring-ws-tunnel-core': [
+					'name': 'Spring WS Tunnel Core Library',
+					'description': ''
+			],
+			'spring-ws-tunnel-demo-server': [
+					'name': 'Spring WS Tunnel Demo Server',
+					'description': ''
+			]
+	]
+}
+
+subprojects {
+	apply plugin: 'java'
+	apply plugin: 'io.freefair.lombok'
+	apply plugin: 'maven-publish'
+	apply plugin: 'signing'
+
+	repositories {
+		mavenCentral()
+	}
+
+	dependencies {
+		constraints {
+			implementation "org.mapstruct:mapstruct:${mapstruct_version}"
+			annotationProcessor "org.mapstruct:mapstruct-processor:${mapstruct_version}"
+		}
+
+		implementation platform("org.springframework.boot:spring-boot-dependencies:${springboot_version}")
+	}
+
+	publishing {
+		publications {
+			"$project.name"(MavenPublication) {
+				artifactId = project.name
+				from components.java
+				pom {
+					var p = project.details[project.name]
+
+					name = p.name
+					description = project.description
+					licenses {
+						license {
+							name = 'The Apache License, Version 2.0'
+							url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+						}
+					}
+					developers {
+						developer {
+							id = 'NemesisMate'
+							email = 'nemesismatedev@gmail.com'
+						}
+					}
+					scm {
+						connection = 'scm:git:git://github.com/nemesismate/spring-ws-tunnel.git'
+						developerConnection = 'scm:git:ssh://github.com/nemesismate/spring-ws-tunnel.git'
+						url = 'https://github.com/NemesisMate/spring-ws-tunnel'
+					}
+				}
+			}
+		}
+		repositories {
+			maven {
+				name = "OSSRH"
+				url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+				credentials {
+					username = findProperty("mavenUsername")
+					password = findProperty("mavenPassword")
+				}
+			}
+		}
+	}
+
+	signing {
+		def signingKey = findProperty("signingKey")
+		def signingPassword = findProperty("signingPassword")
+
+		useInMemoryPgpKeys(signingKey, signingPassword)
+
+		sign publishing.publications[project.name]
+	}
+}
+

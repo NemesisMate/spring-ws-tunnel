@@ -1,0 +1,4 @@
+include 'spring-ws-tunnel-core'
+include 'spring-ws-tunnel-demo-server'
+
+rootProject.name = 'spring-ws-tunnel'

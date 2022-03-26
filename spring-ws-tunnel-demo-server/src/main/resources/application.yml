@@ -1,0 +1,6 @@
+server:
+  port: 8080
+
+ws-tunnel:
+  http-endpoint-enabled: true
+  ws-endpoint-enabled: true
