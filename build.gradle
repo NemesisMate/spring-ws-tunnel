@@ -9,7 +9,7 @@ version = '1.0.0'
 sourceCompatibility = JavaVersion.VERSION_11
 
 java {
-//	withJavadocJar()
+	withJavadocJar()
 	withSourcesJar()
 }
 
@@ -48,14 +48,16 @@ subprojects {
 	publishing {
 		publications {
 			"$project.name"(MavenPublication) {
-				artifactId = project.name
-				from components.java
-				pom {
-					var p = project.details[project.name]
+				var p = project.details[project.name]
 
-					version = project.getParent().getVersion()
+				artifactId = project.name
+				groupId = project.getParent().getGroup()
+				version = project.getParent().getVersion()
+
+				from components.java
+
+				pom {
 					name = p.name
-					description = project.description
 					licenses {
 						license {
 							name = 'The Apache License, Version 2.0'
