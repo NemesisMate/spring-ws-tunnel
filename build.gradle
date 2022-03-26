@@ -53,6 +53,7 @@ subprojects {
 				pom {
 					var p = project.details[project.name]
 
+					version = project.getParent().getVersion()
 					name = p.name
 					description = project.description
 					licenses {
