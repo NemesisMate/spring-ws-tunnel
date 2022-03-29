@@ -8,20 +8,15 @@ group = 'io.github.nemesismate'
 version = '1.0.0'
 sourceCompatibility = JavaVersion.VERSION_11
 
-java {
-	withJavadocJar()
-	withSourcesJar()
-}
-
 ext {
 	details = [
 			'spring-ws-tunnel-core': [
 					'name': 'Spring WS Tunnel Core Library',
-					'description': ''
+					'description': 'Spring WS Tunnel - Core Library'
 			],
 			'spring-ws-tunnel-demo-server': [
 					'name': 'Spring WS Tunnel Demo Server',
-					'description': ''
+					'description': 'Spring WS Tunnel - Demo Server'
 			]
 	]
 }
@@ -31,6 +26,11 @@ subprojects {
 	apply plugin: 'io.freefair.lombok'
 	apply plugin: 'maven-publish'
 	apply plugin: 'signing'
+
+	java {
+		withJavadocJar()
+		withSourcesJar()
+	}
 
 	repositories {
 		mavenCentral()
@@ -58,6 +58,8 @@ subprojects {
 
 				pom {
 					name = p.name
+					description = p.description
+					url = 'https://github.com/NemesisMate/spring-ws-tunnel'
 					licenses {
 						license {
 							name = 'The Apache License, Version 2.0'
