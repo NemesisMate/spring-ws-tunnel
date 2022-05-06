@@ -1,6 +1,6 @@
 package io.github.nemesismate.spring.ws.tunnel.demo.server;
 
-import io.github.nemesismate.spring.ws.tunnel.tunnel.TunnelConfig;
+import io.github.nemesismate.spring.ws.tunnel.tunnel.TunnelListener;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -75,8 +75,8 @@ public class DemoEndpoints implements WebSocketHandler {
     }
 
     @Bean
-    public TunnelConfig TunnelConfig() {
-        return TunnelConfig.builder()
+    public TunnelListener TunnelConfig() {
+        return TunnelListener.Default.builder()
                 .onTunnelCreate(id -> {
                     messageStreamService.send("Created tunnel: " + id);
                     return true;

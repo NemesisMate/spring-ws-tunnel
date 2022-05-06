@@ -31,7 +31,7 @@ public class TunnelEndpoint implements WebSocketHandler {
 
     private final TunnelService tunnelService;
 
-    private final TunnelConfig tunnelConfig;
+    private final TunnelListener tunnelListener;
 
     @Bean
     public HandlerMapping webSocketHandlerMapping(TunnelEndpoint webSocketHandler) {
@@ -53,7 +53,7 @@ public class TunnelEndpoint implements WebSocketHandler {
         String tunnelId = parameters.get(WsTunnelConstants.TUNNEL_ID_PARAM_NAME);
 
         return tunnelService.createTunnelSink(tunnelId)
-                .filter(tunnelSink -> tunnelConfig.getOnTunnelCreate().apply(tunnelId))
+                .filterWhen(tunnelSink -> tunnelListener.onTunnelUp(tunnelId))
                 .switchIfEmpty(Mono.error(IllegalAccessError::new))
                 .flatMap(tunnelSink ->
                         webSocketSession.send(
@@ -65,8 +65,9 @@ public class TunnelEndpoint implements WebSocketHandler {
                                         .map(this::deserialize)
                                         .doOnNext(tunnelSink::addResponse))
                                 .doOnTerminate(() -> {
-                                    tunnelService.deleteTunnelSink(tunnelId);
-                                    tunnelConfig.getOnTunnelDelete().accept(tunnelId);
+                                    tunnelService.deleteTunnelSink(tunnelId)
+                                            .then(tunnelListener.onTunnelDown(tunnelId))
+                                            .subscribe();
                                 }));
     }
 
