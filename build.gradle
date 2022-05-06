@@ -1,12 +1,7 @@
 plugins {
-	id 'java'
 	id 'org.springframework.boot' version "${springboot_version}" apply false
 	id 'io.freefair.lombok' version "${lombok_plugin_version}" apply false
 }
-
-group = 'io.github.nemesismate'
-version = '1.0.0'
-sourceCompatibility = JavaVersion.VERSION_11
 
 ext {
 	details = [
@@ -26,6 +21,10 @@ subprojects {
 	apply plugin: 'io.freefair.lombok'
 	apply plugin: 'maven-publish'
 	apply plugin: 'signing'
+
+	group = 'io.github.nemesismate'
+	version = '1.1.0'
+	sourceCompatibility = JavaVersion.VERSION_11
 
 	java {
 		withJavadocJar()
@@ -51,8 +50,8 @@ subprojects {
 				var p = project.details[project.name]
 
 				artifactId = project.name
-				groupId = project.getParent().getGroup()
-				version = project.getParent().getVersion()
+				groupId = project.group
+				version = project.version
 
 				from components.java
 
@@ -101,4 +100,3 @@ subprojects {
 		sign publishing.publications[project.name]
 	}
 }
-
