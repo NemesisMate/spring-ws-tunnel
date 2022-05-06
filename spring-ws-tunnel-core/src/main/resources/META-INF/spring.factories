@@ -1,1 +1,1 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=WsTunnelAutoConfiguration
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=io.github.nemesismate.spring.ws.tunnel.WsTunnelAutoConfiguration
