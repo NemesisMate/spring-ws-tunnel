@@ -75,7 +75,7 @@ public class DemoEndpoints implements WebSocketHandler {
     }
 
     @Bean
-    public TunnelListener TunnelConfig() {
+    public TunnelListener tunnelListener() {
         return TunnelListener.Default.builder()
                 .onTunnelCreate(id -> {
                     messageStreamService.send("Created tunnel: " + id);
