@@ -1,5 +1,8 @@
 # spring-ws-tunnel
 
+![build main](https://github.com/NemesisMate/spring-ws-tunnel/actions/workflows/main.yml/badge.svg)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.nemesismate/spring-ws-tunnel-core/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.nemesismate/spring-ws-tunnel-core/)
+
 This project can turn any spring application into an API tunnel gateway, allowing a local server to act as one located in the same network the gateway is without requiring special routings (the client becomes the server and the server becomes the client).
 
 This is achieved by using a webscoket connection as a tunnel to forward HTTP or other WS requests.
